@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Legacy Code Commenter</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f5bd3'/%3E%3Cpath d='M9 11l-4 5 4 5M23 11l4 5-4 5M18 8l-4 16' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 11l-4 5 4 5M23 11l4 5-4 5M18 8l-4 16" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div>
+      <div class="brand-name">Legacy Code Commenter</div>
+      <div class="brand-sub">COBOL · PL/SQL · JCL modernization assistant</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span class="pill pill-ok" id="offlinePill" title="All analysis runs on this machine. No source code is sent to any external service.">● Offline</span>
+    <label class="switch" id="llmSwitch" title="Local LLM">
+      <input type="checkbox" id="llmToggle">
+      <span class="slider"></span>
+      <span class="switch-label" id="llmLabel">Local LLM</span>
+    </label>
+    <button class="btn" id="uploadBtn" title="Upload legacy source files">Upload files</button>
+    <button class="btn btn-ghost" id="samplesBtn">Load samples</button>
+    <div class="menu-wrap">
+      <button class="btn btn-primary" id="exportBtn" disabled>Export ▾</button>
+      <div class="menu" id="exportMenu" hidden>
+        <button data-export="annotated">Annotated source (this file)</button>
+        <button data-export="markdown">Documentation .md (this file)</button>
+        <button data-export="json">Analysis JSON (this file)</button>
+        <button data-export="zip">All files → ZIP bundle</button>
+        <label class="menu-opt"><input type="checkbox" id="asciiOpt" checked> ASCII-safe comments (mainframe)</label>
+        <label class="menu-opt">Marker tag <input id="tagOpt" value="AI" maxlength="8" size="5"></label>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    <button class="icon-btn" id="helpBtn" title="User guide (?)" aria-label="Open the user guide">?</button>
+  </div>
+  <input type="file" id="fileInput" multiple hidden>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <section class="files">
+      <div class="side-title">Files <span class="count" id="fileCount">0</span></div>
+      <ul id="fileList" class="file-list"></ul>
+    </section>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="outline">Outline</button>
+      <button class="tab" data-tab="deps">Dependencies</button>
+      <button class="tab" data-tab="risks">Risks</button>
+      <button class="tab" data-tab="insights">Insights</button>
+      <button class="tab" data-tab="map" title="How the uploaded files connect">Map</button>
+    </nav>
+    <div class="tab-body" id="tabBody"></div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar" id="toolbar" hidden>
+      <div class="file-head">
+        <span class="lang-badge" id="langBadge"></span>
+        <strong id="fileTitle"></strong>
+        <span class="muted" id="fileMeta"></span>
+      </div>
+      <div class="tool-row">
+        <div class="chips" id="kindChips"></div>
+        <div class="tool-right">
+          <select id="levelSel" title="How much commentary to show and export">
+            <option value="essential">Essential comments</option>
+            <option value="detailed">Detailed comments</option>
+          </select>
+          <div class="search">
+            <input id="searchBox" placeholder="Find in code  ( / )" autocomplete="off">
+            <span id="searchCount" class="muted"></span>
+          </div>
+          <button class="btn btn-sm" id="acceptAllBtn" title="Accept every visible suggestion">Accept visible</button>
+          <button class="btn btn-sm" id="reanalyzeBtn" title="Re-run analysis (keeps your reviewed comments)">Re-analyze</button>
+          <button class="btn btn-sm btn-toggle" id="previewBtn" title="Show the file exactly as it will be exported">Preview export</button>
+        </div>
+      </div>
+      <div class="progress-row">
+        <div class="progress"><div id="reviewBar"></div></div>
+        <span class="muted" id="reviewText"></span>
+      </div>
+    </div>
+
+    <div class="viewer" id="viewer">
+      <div class="empty" id="emptyState">
+        <div class="drop" id="dropZone">
+          <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M24 31V11m0 0l-8 8m8-8l8 8M10 33v4a3 3 0 003 3h22a3 3 0 003-3v-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h2>Drop legacy source files here</h2>
+          <p>COBOL (.cbl .cob .cpy), PL/SQL (.sql .pkb .pks .trg …), JCL (.jcl) and other text sources.</p>
+          <div class="drop-actions">
+            <button class="btn btn-primary" id="emptyUpload">Choose files</button>
+            <button class="btn" id="emptySamples">Try the synthetic samples</button>
+          </div>
+          <p class="fine">New here? <a href="#guide" id="emptyGuide">Read the user guide</a> (or press <kbd>?</kbd> at any time).</p>
+          <p class="fine">Files stay on this machine. Comments are added as separate <code>[AI]</code>-tagged lines and never alter existing code.</p>
+        </div>
+      </div>
+      <div class="code" id="code" hidden></div>
+      <pre class="preview" id="preview" hidden></pre>
+    </div>
+
+    <div class="selbar" id="selBar" hidden>
+      <span id="selText"></span>
+      <button class="btn btn-sm btn-primary" id="explainBtn">Explain lines</button>
+      <button class="btn btn-sm" id="addCommentBtn">Add comment</button>
+      <button class="btn btn-sm btn-ghost" id="clearSelBtn">Clear</button>
+    </div>
+  </main>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <strong id="drawerTitle">Explanation</strong>
+      <button class="icon-btn" id="drawerClose" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-foot" id="drawerFoot"></div>
+  </aside>
+</div>
+
+<div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="guide-head">
+    <strong id="guideTitle">User guide</strong>
+    <input id="guideSearch" type="search" placeholder="Search the guide" autocomplete="off" aria-label="Search the guide">
+    <span class="muted" id="guideCount"></span>
+    <span class="guide-head-actions">
+      <button class="btn btn-sm" id="guidePrint" title="Print the guide or save it as PDF">Print / PDF</button>
+      <button class="icon-btn" id="guideClose" aria-label="Close guide" title="Close (Esc)">✕</button>
+    </span>
+  </div>
+  <div class="guide-main">
+    <nav class="guide-toc" id="guideToc" aria-label="Guide sections"></nav>
+    <div class="guide-scroll" id="guideScroll"><div class="guide-loading muted">Loading the guide…</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

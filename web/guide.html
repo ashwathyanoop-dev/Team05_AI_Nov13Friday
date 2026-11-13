@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Guide · Legacy Code Commenter</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="standalone">
+<!-- The app loads the <article> below into its built-in guide (the ? button).
+     Opened directly (http://localhost:8765/guide.html) it is a printable stand-alone page. -->
+<article class="guide-content" id="guideContent">
+
+<header class="guide-intro">
+  <h1>User guide</h1>
+  <p>For developers, business analysts and project managers on legacy modernization engagements. The app reads COBOL, PL/SQL and JCL and adds plain-English comments that explain what the code does. You review them and export the result.</p>
+</header>
+
+<section id="g-start" data-title="Getting started">
+  <h2>Getting started</h2>
+  <p>Start the app with <code>python run.py</code>. It opens at <code>http://localhost:8765</code>. Load code with <b>Upload files</b> or drag files onto the page, or try it on the demo code first:</p>
+  <p class="guide-actions"><button class="btn btn-primary" data-guide-action="samples">Load the synthetic samples</button> <button class="btn" data-guide-action="upload">Upload my files</button></p>
+  <figure><img src="img/01-start.png" width="1440" height="900" alt="Start screen with the drop zone and the Offline badge" loading="lazy"><figcaption>The start screen.</figcaption></figure>
+  <h3>The two indicators in the top bar</h3>
+  <dl class="guide-dl">
+    <dt><span class="pill pill-ok">● Offline</span></dt>
+    <dd>Everything runs on this computer. The app only accepts connections from this machine, and the page is blocked from contacting any other site. "Upload" only moves a file from your disk into the local app. This badge is always on; it is a guarantee, not a setting.</dd>
+    <dt><span class="guide-switch" aria-hidden="true"></span> Local LLM</dt>
+    <dd>Optional. When an AI model runs on this machine through Ollama, this switch rewrites summaries in more natural English. If it is greyed out, no local model was found; hover over it to see why. Every feature works without it. See <a href="#g-llm" data-goto="g-llm">Optional local LLM</a>.</dd>
+  </dl>
+</section>
+
+<section id="g-load" data-title="Load code">
+  <h2>Load code</h2>
+  <ul>
+    <li><b>Supported files:</b> COBOL <code>.cbl .cob .cpy</code>, PL/SQL <code>.sql .pls .pks .pkb .prc .fnc .trg</code>, JCL <code>.jcl .proc</code>. Other text files get a basic structural pass.</li>
+    <li><b>Upload copybooks together with the programs that use them.</b> Their fields and condition names (88-levels) then appear in the program's explanations, with any <code>COPY … REPLACING</code> applied. If you add a copybook later, programs that use it are re-analyzed automatically, and your review decisions are kept.</li>
+    <li><b>Upload PROCLIB members together with the jobs that call them</b>, as <code>.proc</code>, <code>.prc</code> or <code>.jcl</code> files named after the procedure. Each <code>EXEC procname</code> step is then expanded into the procedure's steps, with symbols (<code>SET</code>, PROC defaults, EXEC overrides) and DD overrides applied.</li>
+    <li><b>Nested programs:</b> a source file holding several programs is split per program in the outline, and calls between them are marked as internal.</li>
+    <li><b>Continuing a review:</b> re-uploading a file that was exported earlier imports its <code>[AI]</code> comments, so the review can continue later or with another person.</li>
+  </ul>
+</section>
+
+<section id="g-read" data-title="Read the comments">
+  <h2>Read the comments</h2>
+  <p>Each card sits directly above the line it explains. Its colour and label show the kind of comment:</p>
+  <table class="guide-table">
+    <thead><tr><th>Kind</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td><span class="kind-tag" style="--k: var(--k-summary)">Summary</span></td><td>What a program, paragraph, procedure or job step does, what it reads and writes, and who calls it.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-business-rule)">Business rule</span></td><td>A business decision: IF/EVALUATE/CASE conditions in plain English, 88-level meanings, validations that reject input.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-logic)">Logic</span></td><td>Calculations (with rounding or truncation behaviour), loops, error handlers, transaction control.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-data)">Data</span></td><td>Record layouts with byte sizes, packed-decimal fields and their target types, tables (OCCURS), cursors.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-io)">I/O</span></td><td>Files, datasets and SQL statements: what is read, written, created or deleted.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-dependency)">Dependency</span></td><td>Calls to other programs, packages and procedures, and copybooks.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-warning)">Risk</span></td><td>Things that break easily during migration: GO TO, REDEFINES, dynamic SQL, commits inside loops, swallowed errors.</td></tr>
+      <tr><td><span class="kind-tag" style="--k: var(--k-note)">Note</span></td><td>Your own comments.</td></tr>
+    </tbody>
+  </table>
+  <p>The header of each card shows where it came from (<i>rule engine</i>, <i>local LLM</i>, <i>you</i> or <i>imported</i>), how confident the analyzer is, and its review status.</p>
+  <ul>
+    <li>Use the chips above the code to show or hide kinds. Double-click a chip to show only that kind.</li>
+    <li><b>Essential / Detailed</b> controls how much is shown. <i>Detailed</i> adds field-by-field data notes and simple arithmetic.</li>
+    <li>Arrows in comments mean direction of data: <code>SORTIN ← PROD.EMP.MASTER</code> reads from that dataset, <code>SORTOUT → &amp;&amp;EMPSORT</code> writes to it.</li>
+    <li>New to mainframe terms such as DD, DISP or COMP-3? See <a href="#g-glossary" data-goto="g-glossary">Mainframe terms</a>.</li>
+  </ul>
+</section>
+
+<section id="g-review" data-title="Review comments">
+  <h2>Review: accept, edit, reject</h2>
+  <p>Every generated comment starts as <i>suggested</i>. Each card has <b>✓ accept</b>, <b>✎ edit</b> and <b>✕ reject</b> buttons, and the progress bar shows how much of the visible commentary has been reviewed.</p>
+  <figure><img src="img/02-review.png" width="1440" height="900" alt="Reviewing generated comments on a COBOL program" loading="lazy"><figcaption>Reviewing comments on a COBOL program.</figcaption></figure>
+  <ul>
+    <li>Rejected comments stay visible, struck through, with <b>↺ Undo</b>.</li>
+    <li>Edited comments are marked <i>edited</i>, which is useful for audit trails.</li>
+    <li><b>Accept visible</b> accepts everything currently shown.</li>
+    <li><b>+</b> in the gutter (hover over a line number) adds your own comment above that line.</li>
+    <li><b>Re-analyze</b> re-runs the analysis and keeps every comment you accepted, edited, rejected or wrote.</li>
+  </ul>
+  <p class="guide-tip">Your review is saved in this browser on this computer. Use <b>Export</b> to keep a durable copy or hand it to a colleague.</p>
+</section>
+
+<section id="g-navigate" data-title="Navigate and explain">
+  <h2>Navigate and explain</h2>
+  <table class="guide-table">
+    <thead><tr><th>Tab</th><th>Use it to</th></tr></thead>
+    <tbody>
+      <tr><td><b>Outline</b></td><td>Jump between divisions, sections, paragraphs, procedures or job steps. ✓ marks units that have a header comment.</td></tr>
+      <tr><td><b>Dependencies</b></td><td>See every table, file, dataset, program and copybook, with clickable line references.</td></tr>
+      <tr><td><b>Risks</b></td><td>Get a migration-risk checklist for the file.</td></tr>
+      <tr><td><b>Insights</b></td><td>See comment density and header coverage before and after, review progress, and findings by kind.</td></tr>
+      <tr><td><b>Map</b></td><td>See how the uploaded files connect: job step → procedure → program, program → copybook, DD name → dataset, shared tables, and referenced files missing from the upload.</td></tr>
+    </tbody>
+  </table>
+  <h3>Explain any lines</h3>
+  <p>Click a line number, then shift-click another to select a range, and press <b>Explain lines</b>. The side panel explains the range in context and can insert the explanation as a comment.</p>
+  <figure><img src="img/03-explain.png" width="1440" height="900" alt="The Explain lines side panel" loading="lazy"><figcaption>Explaining a selected range.</figcaption></figure>
+  <p>Press <kbd>/</kbd> to search the code. <kbd>Enter</kbd> jumps to the next match.</p>
+</section>
+
+<section id="g-export" data-title="Export">
+  <h2>Export</h2>
+  <p><b>Export ▾</b> offers:</p>
+  <ul>
+    <li><b>Annotated source:</b> the original file with <code>[AI]</code> comment lines inserted. It contains exactly what is shown on screen (current filters and level), minus rejected comments. Use <b>Preview export</b> to see it first.</li>
+    <li><b>Documentation (.md):</b> a knowledge-transfer document covering summary, structure, business rules, risks, I/O, data, dependencies and coverage. Unreviewed items are flagged.</li>
+    <li><b>Analysis JSON:</b> for feeding other tools such as migration trackers or code converters.</li>
+    <li><b>All files → ZIP:</b> annotated sources, documents and JSON for every file, plus a system map.</li>
+  </ul>
+  <p>Options: <b>ASCII-safe comments</b> (on by default; recommended for anything going back to a mainframe or through EBCDIC transfer) and the <b>marker tag</b> (default <code>AI</code>).</p>
+  <figure><img src="img/06-export-preview.png" width="1440" height="900" alt="Export preview showing inserted [AI] comment lines" loading="lazy"><figcaption>The export preview.</figcaption></figure>
+  <h3>Comments never change the code</h3>
+  <p>Only whole new comment lines are added. COBOL comments stay within column 72, and JCL in-stream data is never split. To remove every generated comment again:</p>
+  <pre class="guide-pre">python run.py strip PAYROLL.annotated.cbl -o PAYROLL.cbl</pre>
+  <p>The result is byte-identical to the original.</p>
+</section>
+
+<section id="g-llm" data-title="Optional local LLM">
+  <h2>Optional local LLM</h2>
+  <p>By default, all comments come from the built-in <b>rule engine</b>, which parses the code and states what it finds. A local AI model can rewrite unit summaries and explanations in more natural English. The rule engine still finds the facts, and its version stays attached to each card (<i>Rule-engine version</i>) for comparison.</p>
+  <ol>
+    <li>Install Ollama and start it (Start menu, or <code>ollama serve</code>).</li>
+    <li>Download a model once, for example <code>ollama pull llama3.1:8b</code>. After that it runs without internet.</li>
+    <li>Reload the page. The <b>Local LLM</b> switch becomes active and shows the model name.</li>
+  </ol>
+  <p>String literals and long numbers are masked before code reaches the model. Models on other machines are refused unless an administrator sets <code>LCC_ALLOW_REMOTE_LLM=1</code>, because that would send code off this computer.</p>
+</section>
+
+<section id="g-pm" data-title="For project managers">
+  <h2>For project managers</h2>
+  <ul>
+    <li>The <b>Insights</b> tab and the coverage table in each exported document give per-file evidence: comment density, units documented, rules and risks found, and review progress.</li>
+    <li>The <b>Map</b> tab's <i>Not in this upload</i> list is an inventory-gap list: programs, copybooks and procedures that are referenced but were not provided.</li>
+    <li>Batch mode documents a whole codebase in one command and prints coverage per file:</li>
+  </ul>
+  <pre class="guide-pre">python run.py annotate "codebase/**/*.cbl" -o annotated/ --doc</pre>
+</section>
+
+<section id="g-keys" data-title="Keyboard shortcuts">
+  <h2>Keyboard shortcuts</h2>
+  <table class="guide-table keys">
+    <tbody>
+      <tr><td><kbd>]</kbd> / <kbd>[</kbd></td><td>Next / previous unreviewed comment</td></tr>
+      <tr><td><kbd>a</kbd> <kbd>r</kbd> <kbd>e</kbd></td><td>Accept / reject / edit the focused comment</td></tr>
+      <tr><td><kbd>/</kbd></td><td>Search the code; <kbd>Enter</kbd> jumps to the next match</td></tr>
+      <tr><td><kbd>p</kbd></td><td>Toggle the export preview</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd> / <kbd>Esc</kbd></td><td>Save / cancel while editing a comment</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close this guide or the side panel</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="g-glossary" data-title="Mainframe terms">
+  <h2>Mainframe terms</h2>
+  <p>Terms that appear in the generated comments, for developers new to mainframe code.</p>
+  <h3>JCL (job control)</h3>
+  <dl class="guide-dl glossary">
+    <dt>Job, step</dt><dd>A job is a batch run submitted to the mainframe. It is made of steps; each step (<code>EXEC</code>) runs one program or procedure.</dd>
+    <dt>DD (data definition)</dt><dd>Connects a name used inside the program, such as <code>EMPIN</code>, to a real dataset for this run. The program only knows the DD name, so the job decides which file it actually reads.</dd>
+    <dt>Dataset, DSN</dt><dd>A mainframe file. <code>DSN=</code> gives its name, for example <code>PROD.EMP.MASTER</code>.</dd>
+    <dt>DISP</dt><dd>Disposition: whether the dataset already exists or is created (<code>SHR</code>, <code>OLD</code>, <code>NEW</code>, <code>MOD</code>), and what happens to it when the step ends normally or abnormally (<code>KEEP</code>, <code>CATLG</code>, <code>PASS</code>, <code>DELETE</code>).</dd>
+    <dt>Temporary dataset (&amp;&amp;NAME)</dt><dd>Exists only while the job runs, typically to pass data from one step to the next.</dd>
+    <dt>GDG, (+1), (0)</dt><dd>Generation data group: a versioned file. <code>(+1)</code> is the new version this job creates, <code>(0)</code> the latest existing one, <code>(-1)</code> the one before.</dd>
+    <dt>SYSOUT, spool</dt><dd>Printed or held job output, such as reports and logs, rather than a stored dataset.</dd>
+    <dt>SYSIN, in-stream data</dt><dd>Input lines written directly inside the job, often control statements for a utility such as SORT.</dd>
+    <dt>COND, IF/THEN</dt><dd>Rules that skip or run a step depending on the return codes of earlier steps.</dd>
+    <dt>Return code (RC)</dt><dd>A number a step ends with. 0 usually means success, 4 a warning, 8 or more an error.</dd>
+    <dt>PROC, PROCLIB</dt><dd>A procedure: reusable JCL steps that jobs call with <code>EXEC procname</code>. PROCLIB is the library that stores them.</dd>
+    <dt>Symbol (&amp;NAME)</dt><dd>A placeholder in JCL replaced by a value from <code>SET</code>, the PROC's defaults, or the calling step.</dd>
+    <dt>DFSORT, SORT</dt><dd>IBM's sort, merge and copy utility. Its control statements say which bytes to sort on and which records to keep.</dd>
+  </dl>
+  <h3>COBOL</h3>
+  <dl class="guide-dl glossary">
+    <dt>Division, section, paragraph</dt><dd>A program has four divisions (identification, environment, data, procedure). Procedure code is split into named paragraphs, optionally grouped in sections.</dd>
+    <dt>PERFORM</dt><dd>Runs a paragraph and comes back, like calling a function. <code>PERFORM … UNTIL</code> is a loop.</dd>
+    <dt>GO TO</dt><dd>Jumps to a paragraph without coming back. It makes control flow hard to follow and to migrate.</dd>
+    <dt>Copybook, COPY</dt><dd>A shared source fragment, usually a record layout, pulled into programs with <code>COPY</code>. <code>REPLACING</code> changes names as it is copied.</dd>
+    <dt>PIC</dt><dd>Picture clause: a field's type and size. <code>9(7)V99</code> is a 9-digit number with 2 implied decimals; <code>X(30)</code> is 30 characters.</dd>
+    <dt>COMP-3</dt><dd>Packed decimal: two digits per byte. Must map to an exact decimal type (such as <code>BigDecimal</code>), never floating point.</dd>
+    <dt>88-level</dt><dd>A named condition on a field, such as <code>EMP-TERMINATED</code> meaning <code>EMP-STATUS = 'T'</code>.</dd>
+    <dt>REDEFINES</dt><dd>Two layouts sharing the same bytes. A frequent source of migration bugs.</dd>
+    <dt>OCCURS</dt><dd>An array (table) of repeated fields.</dd>
+    <dt>FD</dt><dd>File description: declares a file and the layout of its records.</dd>
+    <dt>EXEC SQL, EXEC CICS</dt><dd>Embedded database (DB2) statements and online transaction (CICS) commands inside COBOL.</dd>
+  </dl>
+</section>
+
+<section id="g-faq" data-title="FAQ">
+  <h2>FAQ</h2>
+  <dl class="guide-dl">
+    <dt>Does my code leave the machine?</dt>
+    <dd>No. The server listens on this computer only, the page cannot contact other hosts (enforced by its security policy), and the optional LLM must be local too.</dd>
+    <dt>Where is my work saved?</dt>
+    <dd>In this browser's local storage on this machine, so it survives a page reload. Use <b>Export</b> to keep a durable copy or share it. <i>Remove</i> (✕ next to a file) clears it.</dd>
+    <dt>A comment is wrong.</dt>
+    <dd>Reject or edit it. The analysis is pattern-based and can misread unusual code, which is why everything starts as <i>suggested</i>.</dd>
+    <dt>My files are in EBCDIC or a legacy code page.</dt>
+    <dd>Convert them to UTF-8 or ASCII first (most transfer tools do this). Characters that cannot be decoded show as <code>�</code>.</dd>
+    <dt>Can I get this guide as a document?</dt>
+    <dd>Yes. Use <b>Print / PDF</b> at the top of the guide, or open <code>http://localhost:8765/guide.html</code> on its own.</dd>
+  </dl>
+</section>
+
+</article>
+</body>
+</html>
